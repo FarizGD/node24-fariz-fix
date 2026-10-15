@@ -31,8 +31,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Build native image for testing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: proot-test:local
+
+      - name: Test package installation and persistence as an arbitrary UID
+        shell: bash
+        run: |
+          bash -n entrypoint.sh
+          mkdir -p "$RUNNER_TEMP/proot-data"
+          chmod 777 "$RUNNER_TEMP/proot-data"
+          docker run --rm --read-only --user 12345:12345 --cap-drop ALL \
+            --security-opt no-new-privileges \
+            -v "$RUNNER_TEMP/proot-data:/home/container" proot-test:local \
+            /bin/bash -ec 'test "$(id -u)" = 0; node --version; apt-get update; apt-get install -y hello; hello'
+          docker run --rm --read-only --user 12345:12345 --cap-drop ALL \
+            --security-opt no-new-privileges \
+            -v "$RUNNER_TEMP/proot-data:/home/container" proot-test:local \
+            /bin/bash -ec 'dpkg-query -W hello; hello'
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
