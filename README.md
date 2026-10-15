@@ -24,3 +24,17 @@ fastfetch
 PRoot-Distro CLI is on the **outer Docker host environment**, not installed inside the nested guest. The host has the CLI in `/opt/proot-distro-venv/bin/proot-distro`. Use the panel's normal startup to enter the guest. This is still rootless: package post-install scripts that demand real kernel capabilities or privileged mounts may fail, including some OpenSSH configurations.
 
 The node must allow PRoot ptrace operations. The image supports amd64/arm64 depending on the CI build. Existing GitHub Actions build/test workflow should be reviewed for old `.proot-debian` assumptions and updated before relying on green CI.
+
+## Automatic SSH (password login)
+
+The image starts OpenSSH inside the persistent `node24` guest on TCP port `26006` on every Pterodactyl startup, separately from the interactive panel console. The server's allocation must expose TCP/26006. SSH root password login is enabled and public-key authentication is disabled.
+
+Set the root password **once** inside the panel console without editing the egg or nest:
+
+```sh
+read -r -s -p 'SSH root password: ' pw; echo; printf '%s\\n' "$pw" > /home/container/.ssh-root-password; unset pw; chmod 600 /home/container/.ssh-root-password
+```
+
+Restart the Pterodactyl server. Check `/home/container/ssh.log` if SSH does not start. The file `.ssh-root-password` is local persistent state: never commit it or post it publicly. Change the password immediately if it has been exposed. The password is reapplied at startup, so edit that file when rotating it.
+
+A public root account with password-only SSH is high risk; prefer keys in production. PRoot is not real root and some SSH sessions may still fail due to host limitations.
