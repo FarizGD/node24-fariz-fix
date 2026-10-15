@@ -10,8 +10,8 @@ if ! proot-distro list --quiet 2>/dev/null | grep -Fxq node24; then
     echo "Installing bundled Debian/Node guest with proot-distro..."
     proot-distro install /opt/debian-rootfs.tar --name node24
 fi
-guest=(proot-distro login node24 --bind /home/container:/home/container --work-dir /home/container)
-if ! "${guest[@]}" -- /bin/true; then
+guest=(proot-distro login node24 --bind /home/container:/home/container --bind "$PROOT_TMP_DIR:/tmp" --work-dir /home/container)
+if ! "${guest[@]}" -- /bin/bash -ec 'test -d /tmp && touch /tmp/.proot-write-test && rm /tmp/.proot-write-test'; then
     echo "proot-distro could not launch the guest. Check ptrace/seccomp restrictions." >&2
     exit 1
 fi
