@@ -17,8 +17,15 @@ if ! "${guest[@]}" -- /bin/bash -ec 'test -d /tmp && touch /tmp/.proot-write-tes
 fi
 export TERM="${TERM:-xterm}"
 echo "Debian proot-distro ready (simulated root, not host root)."
-# Start SSH within a separate guest session so the interactive console remains available.
-"${guest[@]}" -- /bin/bash /usr/local/sbin/ssh-init.sh > /home/container/ssh.log 2>&1 &
+# Finish SSH package installation and configuration before giving the console to APT users.
+# This prevents concurrent dpkg/apt transactions during CI and interactive startup.
+if ! "${guest[@]}" -- /bin/bash /usr/local/sbin/ssh-init.sh --prepare > /home/container/ssh.log 2>&1; then
+    echo "[SSH] Preparation failed, check /home/container/ssh.log" >&2
+    tail -n 20 /home/container/ssh.log >&2 || true
+    exit 1
+fi
+# Serve SSH in the background after configuration is complete.
+"${guest[@]}" -- /bin/bash /usr/local/sbin/ssh-init.sh --serve >> /home/container/ssh.log 2>&1 &
 ssh_pid=$!
 sleep 2
 if ! kill -0 "$ssh_pid" 2>/dev/null; then
