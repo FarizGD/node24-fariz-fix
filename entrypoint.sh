@@ -3,6 +3,7 @@ set -Eeuo pipefail
 cd /home/container
 rootfs=/home/container/.proot-debian
 export PROOT_TMP_DIR=/home/container/.proot-tmp
+export TMPDIR="$PROOT_TMP_DIR"
 mkdir -p "$PROOT_TMP_DIR"
 if [[ ! -f "$rootfs/.ready" ]]; then
     if [[ -e "$rootfs" ]]; then
