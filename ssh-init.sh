@@ -2,6 +2,9 @@
 set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+if [[ "${1:-}" == "--serve" ]]; then
+  exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config
+fi
 if [[ ! -x /usr/sbin/sshd ]]; then
   echo "[SSH] Installing openssh-server..."
   apt-get update
@@ -36,5 +39,4 @@ PidFile /tmp/sshd.pid
 Subsystem sftp internal-sftp
 CONFIG
 /usr/sbin/sshd -t
-echo "[SSH] Listening on port 26006"
-exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config
+echo "[SSH] SSH configuration ready on port 26006"
