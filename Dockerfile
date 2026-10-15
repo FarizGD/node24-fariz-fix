@@ -43,8 +43,8 @@ RUN         npm install -g corepack \
             && corepack prepare pnpm@latest --activate
 
 # setup user environment
-USER        container
-ENV         USER=container HOME=/home/container
+USER        root
+ENV         USER=root HOME=/home/container
 WORKDIR     /home/container
 
 COPY        --chown=container:container ./../entrypoint.sh /entrypoint.sh
