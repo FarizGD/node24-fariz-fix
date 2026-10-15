@@ -1,36 +1,12 @@
 FROM node:24-trixie-slim AS guest
-
-LABEL       author="Michael Parker" maintainer="parker@pterodactyl.io"
-
-# install packages + sudo
-RUN         apt update \
-            && apt -y install \
-                sudo \
-                ffmpeg \
-                iproute2 \
-                git \
-                sqlite3 \
-                libsqlite3-dev \
-                python3 \
-                python3-dev \
-                ca-certificates \
-                dnsutils \
-                tzdata \
-                zip \
-                tar \
-                curl \
-                build-essential \
-                libtool \
-                iputils-ping \
-                libnss3 \
-                tini \
-            && rm -rf /var/lib/apt/lists/*
-
-
+LABEL author="Michael Parker" maintainer="parker@pterodactyl.io"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev \
+    ca-certificates dnsutils tzdata zip tar curl build-essential libtool \
+    iputils-ping libnss3 tini openssh-client \
+    && rm -rf /var/lib/apt/lists/*
 RUN npm install --global npm@latest typescript ts-node @types/node tsx corepack \
-    && corepack enable \
-    && corepack prepare pnpm@latest --activate
-# Package scripts must not try to start services in the guest.
+    && corepack enable && corepack prepare pnpm@latest --activate
 RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
     && chmod 755 /usr/sbin/policy-rc.d \
     && printf 'APT::Sandbox::User "root";\n' > /etc/apt/apt.conf.d/99proot \
@@ -42,9 +18,12 @@ RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
 
 FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        proot tini ca-certificates iproute2 \
+      proot tini ca-certificates iproute2 python3 python3-venv tar \
+    && python3 -m venv /opt/proot-distro-venv \
+    && /opt/proot-distro-venv/bin/pip install --no-cache-dir 'proot-distro==5.9.0' \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -d /home/container -s /bin/bash container
+ENV PATH="/opt/proot-distro-venv/bin:${PATH}"
 COPY --from=guest /tmp/debian-rootfs.tar /opt/debian-rootfs.tar
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 USER container
