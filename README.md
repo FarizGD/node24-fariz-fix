@@ -25,22 +25,15 @@ PRoot-Distro CLI is on the **outer Docker host environment**, not installed insi
 
 The node must allow PRoot ptrace operations. The image supports amd64/arm64 depending on the CI build. Existing GitHub Actions build/test workflow should be reviewed for old `.proot-debian` assumptions and updated before relying on green CI.
 
-## Automatic SSH (password login)
+## Dropbear SSH (persistent)
+The image uses Debian Dropbear on TCP port **26006**, started automatically from the persistent Debian guest. This avoids OpenSSH's pre-auth `chroot` failure under rootless PRoot. The Pterodactyl allocation and upstream firewall must allow TCP/26006.
 
-The image starts OpenSSH inside the persistent `node24` guest on TCP port `26006` on every Pterodactyl startup, separately from the interactive panel console. The server's allocation must expose TCP/26006. SSH root password login is enabled and public-key authentication is disabled.
-
-Set the root password **once** inside the panel console without editing the egg or nest:
+For the existing persistent guest, the root password you already set with `passwd root` is preserved. If you want to set or rotate it across future restarts, run this **in the Pterodactyl guest console**:
 
 ```sh
-read -r -s -p 'SSH root password: ' pw; echo; printf '%s\\n' "$pw" > /home/container/.ssh-root-password; unset pw; chmod 600 /home/container/.ssh-root-password
+read -r -s -p 'New root password: ' pw; echo; printf '%s\\n' "$pw" > /home/container/.ssh-root-password; chmod 600 /home/container/.ssh-root-password; printf 'root:%s\\n' "$pw" | chpasswd; unset pw
 ```
 
-Restart the Pterodactyl server. Check `/home/container/ssh.log` if SSH does not start. The file `.ssh-root-password` is local persistent state: never commit it or post it publicly. Change the password immediately if it has been exposed. The password is reapplied at startup, so edit that file when rotating it.
+This stores the password privately under the Pterodactyl persistent volume, not in GitHub. On startup, the script reapplies it when present. If the root account is locked and no password file exists, set a password first. For logs use `cat /home/container/ssh.log`.
 
-A public root account with password-only SSH is high risk; prefer keys in production. PRoot is not real root and some SSH sessions may still fail due to host limitations.
-
-## Custom OpenSSH package
-
-The Debian 13 amd64 guest now uses the checked-in `openssh-server-proot_10.0p1-7+deb13u4_amd64.deb` with `ucf` calls removed from its maintainer scripts. The package is installed during image build and used to repair incomplete installations in an existing persistent guest. `openssh-server` is held to prevent APT from silently replacing the patch. This build is currently **amd64 only**, pending a separate ARM64 patched package. SSH stays on TCP port 26006 and reads the locally stored root password; no egg changes are needed.
-
-The patched Debian binary is experimental and has not yet been confirmed working in a complete PRoot login test. Verify the CI smoke test and SSH connection before deployment. Review OpenSSH security updates manually because of the APT hold.
+Dropbear does not require OpenSSH Server's patched `.deb`. Public key authentication is not explicitly disabled in this release; root password authentication is enabled. Use a strong unique password and ideally limit access to trusted IPs.
