@@ -10,8 +10,13 @@ if ! proot-distro list --quiet 2>/dev/null | grep -Fxq node24; then
     echo "Installing bundled Debian/Node guest with proot-distro..."
     proot-distro install /opt/debian-rootfs.tar --name node24
 fi
-# Custom OpenSSH is installed through its patched Debian package, not binary copying.
-guest=(proot-distro login node24 --bind /home/container:/home/container --bind "$PROOT_TMP_DIR:/tmp" --bind /opt/ssh-init.sh:/usr/local/sbin/ssh-init.sh --bind /opt/openssh-server-proot.deb:/tmp/openssh-server-proot.deb --bind /opt/sshd:/tmp/sshd-bundled --work-dir /home/container)
+# Copy startup script into the actual persistent guest rootfs. Do not rely on
+# virtual file binds for the script; they were invisible on some PRoot hosts.
+rootfs=/home/container/.local/share/proot-distro/containers/node24/rootfs
+mkdir -p "$rootfs/usr/local/sbin"
+cp /opt/ssh-init.sh "$rootfs/usr/local/sbin/ssh-init.sh"
+chmod 755 "$rootfs/usr/local/sbin/ssh-init.sh"
+guest=(proot-distro login node24 --bind /home/container:/home/container --bind "$PROOT_TMP_DIR:/tmp" --work-dir /home/container)
 if ! "${guest[@]}" -- /bin/bash -ec 'test -d /tmp && touch /tmp/.proot-write-test && rm /tmp/.proot-write-test'; then
     echo "proot-distro could not launch the guest. Check ptrace/seccomp restrictions." >&2
     exit 1
@@ -33,7 +38,7 @@ if ! kill -0 "$ssh_pid" 2>/dev/null; then
     echo "[SSH] Startup exited, check /home/container/ssh.log" >&2
     tail -n 20 /home/container/ssh.log >&2 || true
 else
-    echo "[SSH] Initializer started (PID $ssh_pid); log: /home/container/ssh.log"
+    echo "[SSH] Dropbear started (PID $ssh_pid); log: /home/container/ssh.log"
 fi
 if (( $# )); then
     exec "${guest[@]}" -- "$@"
