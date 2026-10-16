@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && useradd -m -d /home/container -s /bin/bash container
 ENV PATH="/opt/proot-distro-venv/bin:${PATH}"
 COPY --from=guest /tmp/debian-rootfs.tar /opt/debian-rootfs.tar
+# Keep a recovery copy because some PRoot-Distro imports omit this executable.
+COPY --from=guest /usr/sbin/sshd /opt/sshd
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 COPY --chmod=755 ssh-init.sh /opt/ssh-init.sh
 USER container
