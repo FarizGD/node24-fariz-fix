@@ -10,6 +10,14 @@ if ! proot-distro list --quiet 2>/dev/null | grep -Fxq node24; then
     echo "Installing bundled Debian/Node guest with proot-distro..."
     proot-distro install /opt/debian-rootfs.tar --name node24
 fi
+# Restore the bundled SSH daemon directly into the persistent guest if missing.
+# Avoid an apt reinstall during startup: openssh-server's ucf postinst fails under fake root.
+rootfs=/home/container/.local/share/proot-distro/containers/node24/rootfs
+if [[ -d "$rootfs/usr/sbin" && ! -x "$rootfs/usr/sbin/sshd" ]]; then
+    echo "[SSH] Restoring bundled sshd into persistent rootfs"
+    cp /opt/sshd "$rootfs/usr/sbin/sshd"
+    chmod 755 "$rootfs/usr/sbin/sshd"
+fi
 guest=(proot-distro login node24 --bind /home/container:/home/container --bind "$PROOT_TMP_DIR:/tmp" --bind /opt/ssh-init.sh:/usr/local/sbin/ssh-init.sh --work-dir /home/container)
 if ! "${guest[@]}" -- /bin/bash -ec 'test -d /tmp && touch /tmp/.proot-write-test && rm /tmp/.proot-write-test'; then
     echo "proot-distro could not launch the guest. Check ptrace/seccomp restrictions." >&2
