@@ -3,13 +3,8 @@ LABEL author="Michael Parker" maintainer="parker@pterodactyl.io"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo ffmpeg iproute2 git sqlite3 libsqlite3-dev python3 python3-dev \
     ca-certificates dnsutils tzdata zip tar curl build-essential libtool \
-    iputils-ping libnss3 tini openssh-client openssh-server \
+    iputils-ping libnss3 tini openssh-client dropbear dropbear-bin \
     && rm -rf /var/lib/apt/lists/*
-# This patched Debian 13 package is amd64-only.
-COPY openssh-server-proot_10.0p1-7+deb13u4_amd64.deb /tmp/openssh-server-proot.deb
-RUN dpkg -i /tmp/openssh-server-proot.deb \
-    && apt-mark hold openssh-server \
-    && rm -f /tmp/openssh-server-proot.deb
 RUN npm install --global npm@latest typescript ts-node @types/node tsx corepack \
     && corepack enable && corepack prepare pnpm@latest --activate
 RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
@@ -30,9 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && useradd -m -d /home/container -s /bin/bash container
 ENV PATH="/opt/proot-distro-venv/bin:${PATH}"
 COPY --from=guest /tmp/debian-rootfs.tar /opt/debian-rootfs.tar
-COPY openssh-server-proot_10.0p1-7+deb13u4_amd64.deb /opt/openssh-server-proot.deb
-# Keep a recovery copy because some PRoot-Distro imports omit this executable.
-COPY --from=guest /usr/sbin/sshd /opt/sshd
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 COPY --chmod=755 ssh-init.sh /opt/ssh-init.sh
 USER container
