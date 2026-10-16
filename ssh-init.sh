@@ -5,19 +5,8 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 if [[ "${1:-}" == "--serve" ]]; then
   exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config
 fi
-# ucf's post-install script uses real writability tests; PRoot fake root alone
-# does not make a root-owned 0644 hashfile writable to the outer UID.
-# Make only ucf state writable so Debian package configuration can finish.
-mkdir -p /var/lib/ucf/cache
-chmod -R a+rwX /var/lib/ucf
-if dpkg --audit | grep -q 'openssh-server'; then
-  dpkg --configure openssh-server
-fi
-if [[ ! -x /usr/sbin/sshd ]]; then
-  echo "[SSH] Installing openssh-server..."
-  apt-get update
-  apt-get install -y --reinstall openssh-server
-fi
+# The daemon is bundled in the Docker image and restored before guest startup.
+# Never reinstall openssh-server here: its ucf postinst may fail under PRoot.
 if [[ ! -x /usr/sbin/sshd ]]; then echo "[SSH] openssh-server unavailable" >&2; exit 1; fi
 mkdir -p /etc/ssh /run/sshd
 chmod 755 /run/sshd
