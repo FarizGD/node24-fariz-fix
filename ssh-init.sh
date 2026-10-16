@@ -5,8 +5,13 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 if [[ "${1:-}" == "--serve" ]]; then
   exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config
 fi
-# The daemon is bundled in the Docker image and restored before guest startup.
-# Never reinstall openssh-server here: its ucf postinst may fail under PRoot.
+# Install the UCF-free package into existing persistent guests if they are not configured.
+# Newly provisioned guests already contain it from the build image.
+if ! dpkg-query -W -f='${Status}' openssh-server 2>/dev/null | grep -qx 'install ok installed' || [[ ! -x /usr/sbin/sshd ]]; then
+  echo "[SSH] Repairing OpenSSH with patched local Debian package..."
+  dpkg -i /tmp/openssh-server-proot.deb
+fi
+apt-mark hold openssh-server >/dev/null 2>&1 || true
 if [[ ! -x /usr/sbin/sshd ]]; then echo "[SSH] openssh-server unavailable" >&2; exit 1; fi
 mkdir -p /etc/ssh /run/sshd
 chmod 755 /run/sshd
