@@ -12,7 +12,25 @@ if ! dpkg-query -W -f='${Status}' openssh-server 2>/dev/null | grep -qx 'install
   dpkg -i /tmp/openssh-server-proot.deb
 fi
 apt-mark hold openssh-server >/dev/null 2>&1 || true
-if [[ ! -x /usr/sbin/sshd ]]; then echo "[SSH] openssh-server unavailable" >&2; exit 1; fi
+# Some imported PRoot filesystems are missing sshd despite a configured dpkg status.
+# The Docker build includes a binary from the *same* Debian guest image.
+if [[ ! -x /usr/sbin/sshd ]]; then
+  echo "[SSH] Binary missing after package installation, checking locations..."
+  ls -l /usr/sbin/sshd /usr/bin/sshd /tmp/sshd-bundled 2>&1 || true
+  if [[ -x /usr/bin/sshd ]]; then
+    mkdir -p /usr/sbin
+    ln -sf /usr/bin/sshd /usr/sbin/sshd
+  elif [[ -r /tmp/sshd-bundled ]]; then
+    mkdir -p /usr/sbin
+    cp /tmp/sshd-bundled /usr/sbin/sshd
+    chmod 755 /usr/sbin/sshd
+  fi
+fi
+if [[ ! -x /usr/sbin/sshd ]]; then
+  echo "[SSH] sshd still missing after recovery" >&2
+  ls -ld /usr /usr/sbin /usr/bin || true
+  exit 1
+fi
 mkdir -p /etc/ssh /run/sshd
 chmod 755 /run/sshd
 getent group sshd >/dev/null || groupadd --system sshd
