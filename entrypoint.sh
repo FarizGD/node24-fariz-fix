@@ -25,6 +25,7 @@ export TERM="${TERM:-xterm}"
 echo "Debian proot-distro ready (simulated root, not host root)."
 # Finish SSH package installation and configuration before giving the console to APT users.
 # This prevents concurrent dpkg/apt transactions during CI and interactive startup.
+if [[ "${SSH_DISABLE:-0}" != "1" ]]; then
 if ! "${guest[@]}" -- /bin/bash /usr/local/sbin/ssh-init.sh --prepare > /home/container/ssh.log 2>&1; then
     echo "[SSH] Preparation failed, check /home/container/ssh.log" >&2
     tail -n 20 /home/container/ssh.log >&2 || true
@@ -39,6 +40,7 @@ if ! kill -0 "$ssh_pid" 2>/dev/null; then
     tail -n 20 /home/container/ssh.log >&2 || true
 else
     echo "[SSH] Dropbear started (PID $ssh_pid); log: /home/container/ssh.log"
+fi
 fi
 if (( $# )); then
     exec "${guest[@]}" -- "$@"
