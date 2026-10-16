@@ -38,3 +38,9 @@ read -r -s -p 'SSH root password: ' pw; echo; printf '%s\\n' "$pw" > /home/conta
 Restart the Pterodactyl server. Check `/home/container/ssh.log` if SSH does not start. The file `.ssh-root-password` is local persistent state: never commit it or post it publicly. Change the password immediately if it has been exposed. The password is reapplied at startup, so edit that file when rotating it.
 
 A public root account with password-only SSH is high risk; prefer keys in production. PRoot is not real root and some SSH sessions may still fail due to host limitations.
+
+## Custom OpenSSH package
+
+The Debian 13 amd64 guest now uses the checked-in `openssh-server-proot_10.0p1-7+deb13u4_amd64.deb` with `ucf` calls removed from its maintainer scripts. The package is installed during image build and used to repair incomplete installations in an existing persistent guest. `openssh-server` is held to prevent APT from silently replacing the patch. This build is currently **amd64 only**, pending a separate ARM64 patched package. SSH stays on TCP port 26006 and reads the locally stored root password; no egg changes are needed.
+
+The patched Debian binary is experimental and has not yet been confirmed working in a complete PRoot login test. Verify the CI smoke test and SSH connection before deployment. Review OpenSSH security updates manually because of the APT hold.
