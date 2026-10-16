@@ -8,7 +8,7 @@ fi
 if [[ ! -x /usr/sbin/sshd ]]; then
   echo "[SSH] Installing openssh-server..."
   apt-get update
-  apt-get install -y openssh-server || true
+  apt-get install -y --reinstall openssh-server
 fi
 if [[ ! -x /usr/sbin/sshd ]]; then echo "[SSH] openssh-server unavailable" >&2; exit 1; fi
 mkdir -p /etc/ssh /run/sshd
